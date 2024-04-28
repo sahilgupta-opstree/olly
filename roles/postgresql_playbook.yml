@@ -1,0 +1,8 @@
+# postgresql_playbook.yml
+
+- name: Playbook to setup PostgreSQL
+  hosts: localhost
+  become: yes
+  
+  roles:
+    - role: postgresql
