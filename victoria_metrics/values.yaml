@@ -1,0 +1,306 @@
+vm:
+  victoria-metrics-operator:
+    enabled: true
+    fullnameOverride: vm-operator-victoria-metrics-operator
+    operator:
+      disable_prometheus_converter: false
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 500Mi
+      requests:
+        cpu: "0.3"
+        memory: 300Mi
+  vmsingle:
+    enabled: false
+  vmcluster:
+    enabled: true
+    replicationFactor: 1
+    vmstorage:
+      replicaCount: 1
+      extraArgs:
+          search.maxUniqueTimeseries: "10000000000000"
+      resources:
+        limits:
+          cpu: "1"
+          memory: 2Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+      storage:
+        volumeClaimTemplate:
+        spec:
+            # storageClassName: vm-storage
+            resources:
+              requests:
+                storage: 10Gi
+    vmselect:
+      replicaCount: 1
+      extraArgs:
+        memory.allowedPercent: "75"
+        search.cacheTimestampOffset: 60m
+        search.maxLabelsAPISeries: "10000000000000"
+        search.maxMemoryPerQuery: 2GB
+        search.maxPointsPerTimeseries: "10000000000000"
+        search.maxQueryDuration: 10m
+        search.maxQueryLen: "10000000000000"
+        search.maxSeries: "10000000000000"
+        search.maxUniqueTimeseries: "10000000000000"
+      cacheMountPath: "/select-cache"
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: vm-storage
+            resources:
+              requests:
+                storage: 2Gi
+      resources:
+        limits:
+          cpu: "0.3"
+          memory: 500Mi
+        requests:
+          cpu: "0.2"
+          memory: 250Mi
+    vminsert:
+      replicaCount: 1
+      extraArgs:
+        maxLabelsPerTimeseries: "100"
+      resources:
+        limits:
+          cpu: "0.3"
+          memory: 500Mi
+        requests:
+          cpu: "0.2"
+          memory: 250Mi
+  alertmanager:
+    enabled: false
+    # spec:
+    #   externalURL: "http://vmalertmanager.in/"
+    #   configNamespaceSelector:
+    #     matchLabels:
+    #       kubernetes.io/metadata.name: monitoring
+    #   disableNamespaceMatcher: true
+    #   replicaCount: 1
+    #   retention: 240h
+    #   resources:
+    #     requests:
+    #       cpu: "0.25"
+    #       memory: 250Mi
+    #     limits:
+    #       cpu: "0.25"
+    #       memory: 500Mi
+    #   storage:
+    #     # enable: true
+    #     volumeClaimTemplate:
+    #       spec:
+    #         # storageClassName: vm-storage
+    #         accessModes:
+    #           - "ReadWriteOnce"
+    #         resources:
+    #           requests:
+    #             storage: 1Gi
+    # config:
+    #   templates:
+    #     - "/etc/vm/configs/**/*.tmpl"
+    #   global:
+    #       resolve_timeout: 5m
+    # monzoTemplate:
+    #   enabled: false
+    # templateFiles:
+    #   opstree-alert-template.tmpl: |-
+    #     {{/* Alertmanager Silence link */}}
+    #     {{ define "__alert_silence_link" -}}
+    #       {{ .ExternalURL }}/#/silences/new?filter=%7B
+    #       {{- range .CommonLabels.SortedPairs -}}
+    #         {{- if ne .Name "alertname" -}}
+    #           {{- .Name }}%3D"{{- .Value | urlquery -}}"%2C%20
+    #         {{- end -}}
+    #       {{- end -}}
+    #       alertname%3D"{{- .CommonLabels.alertname -}}"%7D
+    #     {{- end }}
+
+    #     {{/* Severity of the alert */}}
+    #     {{ define "__alert_severity" -}}
+    #         {{- if eq .CommonLabels.severity "critical" -}}
+    #         • *severity:* `critical`
+    #         {{- else if eq .CommonLabels.severity "warning" -}}
+    #         • *severity:* `warning`
+    #         {{- else if eq .CommonLabels.severity "info" -}}
+    #         • *severity:* `info`
+    #         {{- else -}}
+    #         • *severity:* :question: {{ .CommonLabels.severity }}
+    #         {{- end }}
+    #     {{- end }}
+
+    #     {{ define "__alert_severity_prefix_title" -}}
+    #         {{ if ne .Status "firing" -}}
+    #         :white_check_mark:
+    #         {{- else if eq .CommonLabels.severity "critical" -}}
+    #         :fire:
+    #         {{- else if eq .CommonLabels.severity "warning" -}}
+    #         :warning:
+    #         {{- else if eq .CommonLabels.severity "info" -}}
+    #         :information_source:
+    #         {{- else -}}
+    #         :question:
+    #         {{- end }}
+    #     {{- end }}
+
+    #     {{/* Title of the Slack alert */}}
+    #     {{ define "slack.title" -}}
+    #       [{{ .Status | toUpper -}}
+    #       {{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{- end -}}
+    #       ] {{ template "__alert_severity_prefix_title" . }} {{ .CommonLabels.alertname }} | {{ .CommonLabels.env }}
+    #     {{- end }}
+
+    #     {{/* Color of Slack attachment (appears as line next to alert )*/}}
+    #     {{ define "slack.color" -}}
+    #       {{ if eq .Status "firing" -}}
+    #         {{ if eq .CommonLabels.severity "warning" -}}
+    #           warning
+    #         {{- else if eq .CommonLabels.severity "critical" -}}
+    #           danger
+    #         {{- else -}}
+    #           #439FE0
+    #         {{- end }}
+    #       {{ else -}}
+    #       good
+    #       {{- end }}
+    #     {{- end }}
+
+    #     {{/* The text to display in the alert */}}
+    #     {{ define "slack.text" -}}
+    #       {{ template "__alert_severity" . }}
+
+    #       {{- if (index .Alerts 0).Annotations.summary }}
+    #       • *summary:* `{{ (index .Alerts 0).Annotations.summary }}`
+    #       {{- end }}
+
+    #       {{- if (index .Alerts 0).Annotations.description }}
+    #       • *Status:* `{{ (index .Alerts 0).Annotations.description }}`
+    #       {{- end }}
+
+    #       {{- if .CommonLabels.namespace }}
+    #       • *namespace:* `{{ .CommonLabels.namespace }}`
+    #       {{- end }}
+
+    #       {{- if .CommonLabels.env }}
+    #       • *env:* `{{ .CommonLabels.env }}`
+    #       {{- end }}
+
+    #       {{- if .CommonLabels.container }}
+    #       • *service:* `{{ .CommonLabels.container }}`
+    #       {{- end }}
+
+    #       {{- if .CommonLabels.pod }}
+    #       • *pod:* `{{ .CommonLabels.pod }}`
+    #       {{- end }}
+
+    #       *Details:*
+    #       {{ range .CommonLabels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+    #       {{ end }}
+    #     {{- end }}
+  vmalert:
+    enabled: true
+    spec:
+      selectAllByDefault: true
+      image:
+        tag: v1.102.1
+      evaluationInterval: 15s
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 500Mi
+        requests:
+          cpu: "0.5"
+          memory: 250Mi
+      notifiers: 
+        - url: "http://alertmanager:9093"
+  vmagent:
+    enabled: true
+    spec:
+      selectAllByDefault: true
+      image:
+        tag: v1.102.1
+      serviceScrapeNamespaceSelector: {}
+        # matchLabels:
+        #   kubernetes.io/metadata.name: vm
+      scrapeInterval: 30s
+      extraArgs:
+        promscrape.maxScrapeSize: 200MB
+        promscrape.dropOriginalLabels: "true"
+        remoteWrite.label: k8s_cluster=LDC,env=LDC
+      useVMConfigReloader: false
+      resources:
+        limits:
+          cpu: "0.3"
+          memory: 500Mi
+        requests:
+          cpu: "0.2"
+          memory: 250Mi
+  kube-state-metrics:
+    enabled: true
+    resources:
+      requests:
+        memory: "300Mi"
+        cpu: "250m"
+      limits:
+        memory: "500Mi"
+        cpu: "500m"
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+      port: 8080
+      targetPort: http-metrics
+    rbac:
+      create: true  
+    serviceAccount:
+      create: true
+      name: "kube-sa"
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      initialDelaySeconds: 20
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+  
+  # grafana:
+  #   enabled: false
+  # prometheus-node-exporter:
+  #   enabled: true
+  # kube-state-metrics:
+  #   enabled: true
+  # kubeApiServer:
+  #   enabled: false
+  # kubeControllerManager:
+  #   enabled: false
+  # crds:
+  #   enabled: true
+
+  grafana:
+   enabled: true
+   plugins:
+    - grafana-piechart-panel
+    - grafana-worldmap-panel
+    - grafana-clock-panel
+    - victoriametrics-metrics-datasource
+    - novatec-sdg-panel
+    - grafana-polystat-panel
+  grafana.ini:
+    plugins:
+      allow_loading_unsigned_plugins: grafana-piechart-panel,grafana-worldmap-panel,victoriametrics-metrics-datasource,novatec-sdg-panel,grafana-polystat-panel
+      
+      # novatec-service-dependency-graph-panel
+
+

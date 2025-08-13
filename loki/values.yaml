@@ -1,0 +1,198 @@
+logging:
+  global:
+    dnsService: "vm-core-dns"
+  loki:
+    schemaConfig:
+      configs:
+        - from: 2024-04-01
+          store: tsdb
+          object_store: s3
+          schema: v13
+          index:
+            prefix: loki_index_
+            period: 24h
+    ingester:
+      chunk_encoding: snappy
+    tracing:
+      enabled: true
+    querier:
+      # Default is 4, if you have enough memory and CPU you can increase, reduce if OOMing
+      max_concurrent: 4
+    auth_enabled: false
+
+  #gateway:
+  #  ingress:
+  #    enabled: true
+  #    hosts:
+  #      - host: FIXME
+  #        paths:
+  #          - path: /
+  #            pathType: Prefix
+
+  deploymentMode: Distributed
+  gateway:
+    image: 
+      registry: docker.io    
+      repository: nginxinc/nginx-unprivileged
+      tag: 1.27.3-alpine
+    enabled: true
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+    resources:
+      requests:
+        memory: 400Mi
+        cpu: 0.3
+      limits:
+        memory: 600Mi
+        cpu: 0.5
+  chunksCache:
+    enabled: true
+    batchSize: 4
+    parallelism: 5
+    timeout: 2000ms
+    defaultValidity: 0s
+    replicas: 1
+    port: 11211
+    resources:
+      requests:
+        memory: 400Mi
+        cpu: 0.3
+      limits:
+        memory: 600Mi
+        cpu: 0.5
+ 
+  ingester:
+    replicas: 2
+    maxUnavailable: 1
+    persistence:
+      enabled: true
+      claims:
+        - name: data
+          size: 2Gi
+          accessModes:
+            - ReadWriteOnce
+    zoneAwareReplication:
+      enabled: false
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 0.3
+      limits:
+        memory: 500Mi
+        cpu: 0.5
+  
+  querier:
+    replicas: 1
+    maxUnavailable: 1
+    kind: Deployment
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 2
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 0.3
+      limits:
+        memory: 500Mi
+        cpu: 0.5
+  
+  queryFrontend:
+    replicas: 1
+    maxUnavailable: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 10
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 0.3
+      limits:
+        memory: 500Mi
+        cpu: 0.5
+  
+  queryScheduler:
+    replicas: 1
+  
+  distributor:
+    replicas: 1
+    maxUnavailable: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 10
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 0.3
+      limits:
+        memory: 500Mi
+        cpu: 0.5
+  
+  compactor:
+    replicas: 1
+    enabled: true
+    retention_enabled: true
+    persistence:
+      enabled: true
+      claims:
+      - name: data
+        size: 2Gi
+    resources:
+      requests:
+        memory: 300Mi
+        cpu: 0.3
+      limits:
+        memory: 500Mi
+        cpu: 0.5
+  
+  indexGateway:
+    replicas: 1
+    maxUnavailable: 1
+    enabled: true
+    replicas: 1
+    maxUnavailable: 1
+    persistence:
+      enabled: true
+      size: 6Gi
+    resources:
+      requests:
+        memory: 400Mi
+        cpu: 0.3
+      limits:
+        memory: 600Mi
+        cpu: 0.5
+
+  bloomPlanner:
+    replicas: 0
+  bloomBuilder:
+    replicas: 0
+  bloomGateway:
+    replicas: 0
+
+  minio:
+    enabled: true
+  ruler:
+    enabled: false
+  backend:
+    replicas: 0
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+
+  singleBinary:
+    replicas: 0
+  
+promtail:
+  image:
+    registry: docker.io
+    repository: grafana/promtail
+    tag: 3.0.0
+  config:
+    logLevel: info
+    clients:
+      - url: http://loki-release-gateway.loki.svc.cluster.local/loki/api/v1/push
